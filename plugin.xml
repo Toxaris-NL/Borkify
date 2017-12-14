@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin>
+<name>Borkify</name>
+<type>output</type>
+<author>Toxaris</author>
+<description>Alters text to Swedish Chef, Elmer Fudd or 'Ye Olde English'.</description>
+<engine>python3.4</engine>
+<engine>python2.7</engine>
+<version>0.2.0</version>
+<oslist>osx,unx,win</oslist>
+<autostart>true</autostart>
+<autoclose>true</autoclose>
+</plugin>
