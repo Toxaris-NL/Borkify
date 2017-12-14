@@ -1,73 +1,81 @@
 ﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os, sys
-import tempfile, shutil
+import os
+import sys
+import tempfile
+import shutil
 import re
 import inspect
 import xml.etree.ElementTree as ET
+from random import randint
+from html_namedentities import named_entities
+from epub_utils import epub_zip_up_book_contents
+
 PY2 = sys.version_info[0] == 2
 if PY2:
     import ConfigParser as configparser
+    import Tkinter as tkinter
+    import ttk as tkinter_ttk
+    import Tkconstants as tkinter_constants
+    import tkFileDialog as tkinter_filedialog
 else:
     import configparser
+    import tkinter
+    import tkinter.ttk as tkinter_ttk
+    import tkinter.constants as tkinter_constants
+    import tkinter.filedialog as tkinter_filedialog
 
 try:
     from urllib.parse import unquote
 except ImportError:
     from urllib import unquote
 
-from random import randint
-from html_namedentities import named_entities
-from epub_utils import epub_zip_up_book_contents
-
-if PY2:
-    import Tkinter as tkinter
-    import ttk as tkinter_ttk
-    import Tkconstants as tkinter_constants
-    import tkFileDialog as tkinter_filedialog
-else:
-    import tkinter
-    import tkinter.ttk as tkinter_ttk
-    import tkinter.constants as tkinter_constants
-    import tkinter.filedialog as tkinter_filedialog
-
 _USER_HOME = os.path.expanduser("~")
-SCRIPT_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(inspect.getfile(
+    inspect.currentframe())))
 IS_NAMED_ENTITY = re.compile("(&\w+;)")
 BORKIFY_METHOD = 1
 
 ini_path = os.path.join(SCRIPT_DIR, 'Borkify.ini')
 
+
 def write_ini(ini_path):
-    config = configparser.ConfigParser(allow_no_value = True)
+    config = configparser.ConfigParser(allow_no_value=True)
     config.optionxform = str
     config.add_section('Borkifier')
     config.set('Borkifier', '; Language can have four values:')
-    config.set('Borkifier', '; 0: random for each text element (e.g. a span inside a paragraph can have different settings)')
-    config.set('Borkifier', '; 1: text will resemble speech from the Swedish Chef')
+    config.set('Borkifier', '; 0: random for each text element (e.g. a span ' 
+               'inside a paragraph can have different settings)')
+    config.set('Borkifier', '; 1: text will resemble speech from the Swedish '
+               'Chef')
     config.set('Borkifier', '; 2: text will resemble speech from Elmer Fudd')
-    config.set('Borkifier', '; 3: text will resemble the "Olde English" speech')
+    config.set('Borkifier', '; 3: text will resemble the "Olde English" '
+               'speech')
     config.set('Borkifier', 'Language', str(BORKIFY_METHOD))
     with open(ini_path, 'w') as fp:
         config.write(fp)
 
+
 def read_ini(ini_path):
-    config = configparser.ConfigParser(allow_no_value = True)
+    config = configparser.ConfigParser(allow_no_value=True)
     config.read(ini_path)
     os.path.isfile(ini_path)
     BORKIFY_METHOD = config.getint('Borkifier', 'Language')
 
+
 def run(bk):
     # check if inifile exists
     if not os.path.isfile(ini_path):
-            print ("Borkify.ini not found. Using default settings.")
+            print("Borkify.ini not found. Using default settings.")
             write_ini(ini_path)
     
-	# run plugin version check
-    href = 'http://www.mobileread.com/forums/showpost.php?p=3138237&postcount=1'
+    # run plugin version check
+    href = 'http://www.mobileread.com/forums/showpost.php?p='
+    '3138237&postcount=1'
     _latest_pattern = re.compile(r'Current Version:\s*&quot;([^&]*)&')
-    plugin_xml_path = os.path.abspath(os.path.join(bk._w.plugin_dir, 'Borkify', 'plugin.xml'))
+    plugin_xml_path = os.path.abspath(os.path.join(bk._w.plugin_dir, 'Borkify',
+                                                   'plugin.xml'))
     plugin_version = ET.parse(plugin_xml_path).find('.//version').text
     try:
         latest_version = None
@@ -81,11 +89,12 @@ def run(bk):
             if latest_version and latest_version != plugin_version:
                 restype = 'info'
                 filename = linenumber = None
-                message = '*** An updated plugin version is available: v' + latest_version + ' ***'
+                message = '*** An updated plugin version is available: v' + \
+                          latest_version + ' ***'
                 bk.add_result(restype, filename, linenumber, message)
     except:
         pass
-	
+
     # read inifile
     read_ini(ini_path)
     
@@ -113,10 +122,10 @@ def run(bk):
         with open(fpath, "wb") as f:
             f.write(data.encode('utf-8'))
    
-     # finally ready to build epub
+    # finally ready to build epub
     print("..creating 'borkified' ePUB")
     data = "application/epub+zip"
-    fpath = os.path.join(temp_dir,"mimetype")
+    fpath = os.path.join(temp_dir, "mimetype")
     with open(fpath, "wb") as f:
         f.write(data.encode('utf-8'))
 
@@ -147,25 +156,27 @@ def run(bk):
 
     print("Output Conversion Complete")
 
- 	# Setting the proper Return value is important.
- 	# 0 - means success
- 	# anything else means failure
+    # Setting the proper Return value is important.
+    # 0 - means success
+    # anything else means failure
 
     return 0
+
 
 def borkify_xhtml(bk, mid, href):
     res = []
  
-    #parse the xhtml, converting on the fly to update it
+    # parse the xhtml, converting on the fly to update it
     qp = bk.qp
     qp.setContent(bk.readfile(mid))
-    basetags_end=('.p', '.div','.li','.td')
-    basetags_middle=('.p.', '.div.','.li.','.td.')
+    basetags_end = ('.p', '.div', '.li', '.td')
+    basetags_middle = ('.p.', '.div.', '.li.', '.td.')
     for text, tprefix, tname, ttype, tattr in qp.parse_iter():
         if text is not None:
             if "pre" not in tprefix:
                 text = convert_named_entities(text)
-            if filter(tprefix.endswith,basetags_end) or (any(substring in tprefix for substring in basetags_middle)):
+            if filter(tprefix.endswith, basetags_end) or \
+               (any(substring in tprefix for substring in basetags_middle)):
                 text = borkify(text)
             res.append(text)
         
@@ -173,9 +184,10 @@ def borkify_xhtml(bk, mid, href):
    
     return "".join(res)
 
+
 def borkify(text):
     if BORKIFY_METHOD == 0:
-        method = randint(1,3)
+        method = randint(1, 3)
     else:
         method = BORKIFY_METHOD
     
@@ -188,21 +200,23 @@ def borkify(text):
         
     return text
  
-def convert_named_entities(text): 
+
+def convert_named_entities(text):
     pieces = IS_NAMED_ENTITY.split(text)
-    for i in range(1, len(pieces),2):
+    for i in range(1, len(pieces), 2):
         piece = pieces[i]
-        sval = named_entities.get(piece[1:],"")
+        sval = named_entities.get(piece[1:], "")
         if sval != "":
             val = ord(sval)
             piece = "&#%d;" % val
-            pieces[i] =piece
+            pieces[i] = piece
     return "".join(pieces)
+
 
 def cleanup_file_name(name):
     import string
     _filename_sanitize = re.compile(r'[\xae\0\\|\?\*<":>\+/]')
-    substitute='_'
+    substitute = '_'
     one = ''.join(char for char in name if char in string.printable)
     one = _filename_sanitize.sub(substitute, one)
     one = re.sub(r'\s', '_', one).strip()
@@ -216,8 +230,9 @@ def cleanup_file_name(name):
         one = substitute+one[1:]
     return one
 
+
 def chefalize(phrase):
-    #based on the classic chef.x, copyright (c) 1992, 1993 John Hagerman
+    # based on the classic chef.x, copyright (c) 1992, 1993 John Hagerman
     subs = ((r'a([nu])', r'u\1'),
             (r'A([nu])', r'U\1'),
             (r'a\B', r'e'),
@@ -249,6 +264,7 @@ def chefalize(phrase):
         phrase = re.sub(fromPattern, toPattern, phrase)
     return phrase
 
+
 def fuddalize(phrase):
     subs = ((r'[rl]', r'w'),
             (r'qu', r'qw'),
@@ -260,6 +276,7 @@ def fuddalize(phrase):
         phrase = re.sub(fromPattern, toPattern, phrase)
     return phrase
    
+
 def oldalize(phrase):
     subs = ((r'i([bcdfghjklmnpqrstvwxyz])e\b', r'y\1'),
             (r'i([bcdfghjklmnpqrstvwxyz])e', r'y\1\1e'),
@@ -310,8 +327,9 @@ def oldalize(phrase):
         phrase = re.sub(fromPattern, toPattern, phrase)
     return phrase
 
+
 def main():
-    print ("I reached main when I should not have\n")
+    print("I reached main when I should not have\n")
     return -1
     
 if __name__ == "__main__":
